@@ -1,0 +1,31 @@
+<div class="job" id="{{this.page_data.job.name}}">
+  <h1 class="text-4xl">{{this.page_data.job.name}}</h1>
+  <p>Script located at: {{this.page_data.job.path}}</p>
+  <p>
+    Synced to google:
+    {{#if this.page_data.job.sync_to_google}}
+      <input type="checkbox" checked disabled />
+    {{else}}
+      <input type="checkbox" disabled />
+    {{/if}}
+  </p>
+  <p> Next Run: <span class="time">{{this.page_data.job.next_sync}}</span></p>
+  <p> Last Run: <span class="time">{{this.page_data.job.last_sync}}</span></p>
+  <p>Sync every {{this.page_data.job.sync_interval}}s</p>
+  {{!-- <a href="/jobs/{{this.page_data.job.name}}">View</a> --}}
+  <a
+    hx-swap="outerHTML"
+    hx-get="/jobs/{{this.page_data.job.name}}/edit"
+    hx-target="#{{this.page_data.job.name}}"
+  >Edit</a>
+  <a
+    hx-get="/jobs/{{this.page_data.job.name}}/delete"
+    hx-swap="outerHTML"
+    hx-target="#{{this.page_data.job.name}}"
+  >Delete</a>
+  <a hx-post="/jobs/{{this.page_data.job.name}}/run" hx-swap="none">Run</a>
+  {{#if this.page_data.htmx_request}}{{else}}
+    <a href="/jobs">Back</a>
+  {{/if}}
+  <script src="/js/main.js"></script>
+</div>

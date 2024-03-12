@@ -1,0 +1,22 @@
+<div class="assignment" id="a-{{ this.page_data.assignment.link_name }}">
+    <h1 class="text-4xl">{{ this.page_data.assignment.name }}</h1>
+    <p>Course: {{ this.page_data.assignment.course }}</p>
+    <p>
+        Synced to google: <input type="checkbox" {{#if this.page_data.assignment.synced}}checked{{/if}} disabled>
+    </p>
+    <p>
+        Due at <span class="time">{{ this.page_data.assignment.due }}</span>
+    </p>
+    <p>Source: {{ this.page_data.assignment.job_name }}</p>
+    <a hx-swap="outerHTML"
+       hx-get="/assignments/{{ this.page_data.assignment.link_name }}/edit"
+       hx-target="#a-{{ this.page_data.assignment.link_name }}">Edit</a>
+    <a hx-get="/assignments/{{ this.page_data.assignment.link_name }}/delete"
+       hx-swap="outerHTML"
+       hx-target="#a-{{ this.page_data.assignment.link_name }}">Delete</a>
+    {{#if this.page_data.htmx_request}}
+    {{ else }}
+        <a href="/assignments">Back</a>
+    {{/if}}
+</div>
+<script src="/js/main.js"></script>

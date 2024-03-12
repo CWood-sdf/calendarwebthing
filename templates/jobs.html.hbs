@@ -1,0 +1,11 @@
+<p>
+    <a hx-get="/jobs/new" hx-swap="outerHTML">new job</a>
+</p>
+<p>
+    <a href="/">Home</a>
+</p>
+{{#each this.page_data.manager.jobs}}
+    <a hx-get="/jobs/{{ this.name }}/view"
+       hx-swap="outerHTML"
+       hx-trigger="load">{{ this.name }}</a>
+{{/each}}

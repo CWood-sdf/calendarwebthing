@@ -1,0 +1,19 @@
+<div id="new-assignment">
+    <h1>New Assignment</h1>
+    <form action="/assignments/new" method="post">
+        <div>
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+        <div>
+            <label for="due">Due</label>
+            <input type="datetime-local" id="due" name="due" required>
+        </div>
+        <div>
+            <label for="course">Course</label>
+            <input type="text" id="course" name="course" required>
+        </div>
+        <input type="submit" value="Submit" hx-swap="outerHTML" hx-target="body">
+    </form>
+    <a hx-get="/assignments" hx-target="body" hx-swap="outerHTML">Cancel</a>
+</div>

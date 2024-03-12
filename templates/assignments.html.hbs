@@ -1,0 +1,14 @@
+<p>
+    <a hx-get="/assignments/new" hx-swap="outerHTML">new assignment</a>
+</p>
+<p>
+    <a href="/">Home</a>
+</p>
+{{#each this.page_data.manager.assignments}}
+    {{#if this.done}}
+    {{ else }}
+        <a hx-get="/assignments/{{ this.link_name }}/view"
+           hx-swap="outerHTML"
+           hx-trigger="load">{{ this.name }}</a>
+    {{/if}}
+{{/each}}

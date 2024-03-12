@@ -1,0 +1,23 @@
+<div id="new-job">
+    <h1>new job</h1>
+    <form action="/jobs/new" method="post">
+        <div>
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+        <div>
+            <label for="path">Path</label>
+            <input type="text" id="path" name="path" required>
+        </div>
+        <div>
+            <label for="sync_to_google">Sync to Google</label>
+            <input type="checkbox" id="sync_to_google" name="sync_to_google">
+        </div>
+        <div>
+            <label for="sync_interval">Sync Interval</label>
+            <input type="number" id="sync_interval" name="sync_interval" required>
+        </div>
+        <input type="submit" value="Submit" hx-swap="outerHTML" hx-target="body">
+    </form>
+    <a hx-get="/jobs" hx-target="body" hx-swap="outerHTML">Cancel</a>
+</div>

@@ -1,0 +1,34 @@
+<div id="edit-{{ this.page_data.assignment.link_name }}">
+    <h1>edit assignment {{ this.page_data.assignment.name }}</h1>
+    <form action="/assignments/edit" method="post">
+        <p>
+            Name:
+            {{ this.page_data.assignment.name }}
+        </p>
+        <p>
+            <label for="due">Due</label>
+            <input type="datetime-local"
+                   id="due"
+                   name="due"
+                   required
+                   value="{{ this.page_data.assignment.due }}">
+        </p>
+        <p>
+            <label for="course">Course</label>
+            <input type="text"
+                   id="course"
+                   name="course"
+                   required
+                   value="{{ this.page_data.assignment.course }}">
+        </p>
+        <p>
+            <input type="submit"
+                   value="Submit"
+                   hx-target="#edit-{{ this.page_data.assignment.name }}"
+                   hx-swap="outerHTML">
+        </p>
+    </form>
+    <a hx-get="/assignments/{{ this.page_data.assignment.link_name }}/view"
+       hx-target="#edit-{{ this.page_data.assignment.link_name }}"
+       hx-swap="outerHTML">Cancel</a>
+</div>

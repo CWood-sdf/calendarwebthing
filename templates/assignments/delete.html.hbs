@@ -1,0 +1,4 @@
+<h1> Delete {{ this.page_data.assignment.name }}?</h1>
+
+<a hx-delete="/assignments/{{this.page_data.assignment.name}}/delete" hx-target="body" hx-swap="innerHTML">Delete </a>
+<a hx-get="/assignments" hx-target="body" hx-swap="innerHTML">Cancel</a>

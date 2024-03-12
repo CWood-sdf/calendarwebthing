@@ -1,0 +1,44 @@
+<div id="edit-{{ this.page_data.job.name }}">
+    <h1>edit job {{ this.page_data.job.name }}</h1>
+    <form action="/jobs/edit" method="post">
+        <p>
+            <label for="name">Name</label>
+            <input type="text"
+                   id="name"
+                   name="name"
+                   required
+                   value="{{ this.page_data.job.name }}">
+        </p>
+        <p>
+            <label for=" path">Path</label>
+            <input type="text"
+                   id="path"
+                   name="path"
+                   required
+                   value="{{ this.page_data.job.path }}">
+        </p>
+        <p>
+            <label for="sync_to_google">Sync to Google</label>
+            <input type="checkbox" id="sync_to_google" name="sync_to_google" {{#if
+                this.page_data.job.sync_to_google}}checked{{/if}}>
+            </p>
+            <p>
+                <label for="sync_interval">Sync Interval</label>
+                <input type="number"
+                       id="sync_interval"
+                       name="sync_interval"
+                       required
+                       value="{{ this.page_data.job.sync_interval }}">
+                s
+            </p>
+            <p>
+                <input type="submit"
+                       value="Submit"
+                       hx-target="#edit-{{ this.page_data.job.name }}"
+                       hx-swap="outerHTML">
+            </p>
+        </form>
+        <a hx-get="/jobs/{{ this.page_data.job.name }}/view"
+           hx-target="#edit-{{ this.page_data.job.name }}"
+           hx-swap="outerHTML">Cancel</a>
+    </div>

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    {{!-- <title> {{ this.page_data.title }} </title> --}}
+    {{!--
+    <script src="https://cdn.tailwindcss.com"></script> --}}
+    <script src="https://unpkg.com/htmx.org@1.9.10"
+        integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC"
+        crossorigin="anonymous"></script>
+    <link rel="icon" href="favicon.ico">
+</head>
+
+<body hx-boost="true">
+    {{> (lookup (lookup this 'page_data') 'page') page_data=this.page_data }}
+
+  <script src="/js/main.js"></script>
+</body>
+
+</html>
