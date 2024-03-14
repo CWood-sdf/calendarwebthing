@@ -6,7 +6,7 @@ use rocket_dyn_templates::{context, Template};
 #[derive(serde::Serialize, serde::Deserialize)]
 struct AssignmentPageData {
     page: String,
-    manager: manager::Manager,
+    manager: manager::ManagerData,
     job: Option<manager::Job>,
     assignment: manager::Assignment,
     htmx_request: bool,
@@ -42,9 +42,9 @@ fn new_assignment(
     // Ok("sdf".to_string())
     let mut manager = manager::Manager::from_save_file();
     let assignment = manager::Assignment::new(
-        new_assignment.name.clone(),
-        d as u64,
         new_assignment.course.clone(),
+        d as u64,
+        new_assignment.name.clone(),
         "manual".to_string(),
     );
     manager.add_assignment(assignment);
@@ -54,6 +54,7 @@ fn new_assignment(
             return Err(rocket::response::status::BadRequest(e.to_string()));
         }
     }
+    manager.break_lock();
     return Ok(rocket::response::Redirect::to("/assignments"));
     //     }
 }
@@ -61,6 +62,7 @@ fn new_assignment(
 fn edit_job(assignment: rocket::form::Form<NewAssignment>) -> rocket::response::Redirect {
     let mut manager = manager::Manager::from_save_file();
     if !manager
+        .data
         .assignments
         .iter()
         .any(|j| j.name == assignment.name)
@@ -71,6 +73,7 @@ fn edit_job(assignment: rocket::form::Form<NewAssignment>) -> rocket::response::
         ));
     }
     let current_assignment = manager
+        .data
         .assignments
         .iter_mut()
         .find(|j| j.name == assignment.name)
@@ -98,6 +101,7 @@ fn edit_job(assignment: rocket::form::Form<NewAssignment>) -> rocket::response::
 fn delete_assignment(name: String) -> rocket::response::Redirect {
     let mut manager = manager::Manager::from_save_file();
     manager
+        .data
         .assignments
         .retain(|assignment| assignment.link_name != name);
     manager.save().unwrap();
@@ -111,7 +115,7 @@ fn get_page_assignment(
     headers: Headers,
 ) -> Result<Template, rocket::response::status::NotFound<String>> {
     println!("{}", name);
-    let manager = manager::Manager::from_save_file();
+    let manager = manager::Manager::read_no_save();
     let assignment = match manager.get_assignment_from_link_name(id) {
         Some(assignment) => assignment,
         None => {

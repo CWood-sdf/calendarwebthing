@@ -16,7 +16,7 @@ extern crate rocket;
 #[derive(serde::Serialize, serde::Deserialize)]
 struct PageData {
     page: String,
-    manager: manager::Manager,
+    manager: manager::ManagerData,
     htmx_request: bool,
 }
 
@@ -28,7 +28,8 @@ fn index(req: Headers) -> Template {
 #[get("/<page>")]
 fn get_page(page: String, headers: Headers) -> Template {
     println!("Getting page {}", page);
-    let manager = manager::Manager::from_save_file();
+    let manager = manager::Manager::read_no_save();
+    println!("Manager: {:?}", manager);
     let page_data = PageData {
         page: page.clone(),
         manager,
@@ -49,7 +50,7 @@ async fn get_js(path: PathBuf) -> Option<NamedFile> {
 #[get("/<folder>/<page>")]
 fn get_sub_page(folder: String, page: String, headers: Headers) -> Template {
     println!("{}/{}", folder, page);
-    let manager = manager::Manager::from_save_file();
+    let manager = manager::Manager::read_no_save();
     let page_data = PageData {
         page: format!("{}/{}", folder, page),
         manager,
@@ -73,8 +74,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut manager = manager::Manager::from_save_file();
             manager.clear_past_due();
             rt.block_on(manager.run_jobs());
+            // std::thread::sleep(std::time::Duration::from_secs(60));
+            manager.break_lock();
             // println!("Waiting...");
-            let mut sleep_time = 150;
+            let mut sleep_time = 10;
             let sleep_duration = 1;
             // sleep for 5 minutes
             while sleep_time > 0 {

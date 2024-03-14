@@ -137,19 +137,109 @@ impl Assignment {
     }
 }
 
+static SAVE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Manager {
+pub struct ManagerData {
     pub jobs: Vec<Job>,
     pub assignments: Vec<Assignment>,
     pub save_file: PathBuf,
 }
 
+#[derive(Debug)]
+pub struct Manager {
+    pub data: ManagerData,
+    pub lock: Option<std::sync::MutexGuard<'static, ()>>,
+}
+
 impl Manager {
-    pub fn get_save_file() -> PathBuf {
+    pub fn get_assignment_from_link_name(&self, name: String) -> Option<&Assignment> {
+        self.data.get_assignment_from_link_name(name)
+    }
+    pub fn from_save_file() -> Self {
+        let lock = SAVE_LOCK.lock().unwrap();
+        let data = ManagerData::from_save_file();
+        Self {
+            data,
+            lock: Some(lock),
+        }
+    }
+    pub fn empty() -> Self {
+        let lock = SAVE_LOCK.lock().unwrap();
+        let data = ManagerData::empty();
+        Self {
+            data,
+            lock: Some(lock),
+        }
+    }
+    pub fn save(&self) -> Result<(), std::io::Error> {
+        if self.lock.is_none() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Lock is none",
+            ));
+        }
+        self.data.save()
+    }
+    pub fn add_job(&mut self, job: Job) {
+        if self.lock.is_none() {
+            return;
+        }
+        self.data.add_job(job);
+    }
+    pub fn add_assignment(&mut self, assignment: Assignment) {
+        if self.lock.is_none() {
+            return;
+        }
+        self.data.add_assignment(assignment);
+    }
+
+    pub fn remove_job(&mut self, name: &str) {
+        if self.lock.is_none() {
+            return;
+        }
+        self.data.remove_job(name);
+    }
+    pub fn clear_past_due(&mut self) {
+        if self.lock.is_none() {
+            return;
+        }
+        self.data.clear_past_due();
+    }
+    pub fn should_sync(&self) -> bool {
+        if self.lock.is_none() {
+            return false;
+        }
+        self.data.should_sync()
+    }
+    pub async fn run_jobs(&mut self) {
+        if self.lock.is_none() {
+            return;
+        }
+        self.data.run_jobs().await;
+    }
+    pub fn mark_done(&mut self, link_name: String) {
+        if self.lock.is_none() {
+            return;
+        }
+        self.data.mark_done(link_name);
+    }
+    pub fn break_lock(&mut self) {
+        self.lock = None;
+    }
+
+    pub fn read_no_save() -> ManagerData {
+        let _lock = SAVE_LOCK.lock().unwrap();
+        ManagerData::from_save_file()
+    }
+}
+
+impl ManagerData {
+    fn get_save_file() -> PathBuf {
         let home_dir = home::home_dir().unwrap();
         PathBuf::from(home_dir.join(".calendarthing/manager.json"))
     }
-    pub fn empty() -> Self {
+    fn empty() -> Self {
         Self {
             jobs: Vec::new(),
             assignments: Vec::new(),
@@ -163,7 +253,7 @@ impl Manager {
         Ok(serde_json::from_str(&file)?)
     }
 
-    pub fn save(&self) -> Result<(), std::io::Error> {
+    fn save(&self) -> Result<(), std::io::Error> {
         let save_file = Self::get_save_file();
         let json = serde_json::to_string(self)?;
         std::fs::create_dir_all(save_file.parent().unwrap())?;
@@ -176,7 +266,7 @@ impl Manager {
         Ok(manager)
     }
 
-    pub fn from_save_file() -> Self {
+    fn from_save_file() -> Self {
         let save_file = Self::get_save_file();
         if !save_file.exists() {
             println!("Creating new save file");
@@ -205,7 +295,7 @@ impl Manager {
         ret
     }
 
-    pub fn add_job(&mut self, job: Job) {
+    fn add_job(&mut self, job: Job) {
         for j in &mut self.jobs {
             if j.name == job.name {
                 j.path = job.path;
@@ -218,18 +308,18 @@ impl Manager {
         self.jobs.push(job);
     }
 
-    pub fn add_assignment(&mut self, assignment: Assignment) {
+    fn add_assignment(&mut self, assignment: Assignment) {
         if self.assignments.contains(&assignment) {
             self.assignments.retain(|a| a != &assignment);
         }
         self.assignments.push(assignment);
     }
 
-    pub fn remove_job(&mut self, name: &str) {
+    fn remove_job(&mut self, name: &str) {
         self.jobs.retain(|job| job.name != name);
     }
 
-    pub fn clear_past_due(&mut self) {
+    fn clear_past_due(&mut self) {
         let start_len = self.assignments.len();
         self.assignments.retain(|assignment| !assignment.past_due());
         if start_len != self.assignments.len() {
@@ -264,7 +354,7 @@ impl Manager {
         self.jobs.iter().find(|job| job.name == name)
     }
 
-    pub fn should_sync(&self) -> bool {
+    fn should_sync(&self) -> bool {
         for job in &self.jobs {
             if job.sync_due() {
                 return true;
@@ -273,41 +363,47 @@ impl Manager {
         false
     }
 
+    async fn sync_assignment_to_google(&mut self, assignment: &mut Assignment) {
+        println!("Syncing {} to google", assignment.name);
+        let actual_assignment = self
+            .assignments
+            .iter_mut()
+            .find(|v| v.name == assignment.name)
+            .unwrap_or(assignment);
+
+        if actual_assignment.synced != None {
+            return;
+        }
+        let dir = std::env::current_exe()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("google_sync");
+        println!("Dir: {:?}", dir);
+        let output = Command::new("node")
+            .arg("google.js")
+            .arg(serde_json::to_string(assignment).unwrap())
+            .current_dir(dir)
+            .output()
+            .await
+            .unwrap();
+        println!("Output: {}", String::from_utf8(output.stdout).unwrap());
+        println!("Synced {} to google", assignment.name);
+    }
+
     async fn sync_to_google(&mut self, mut assignments: Vec<Assignment>) {
         for assignment in &mut assignments {
             if let Some(job_name) = &assignment.job_name {
                 if let Some(job) = self.get_job(job_name.clone()) {
                     if job.sync_to_google {
-                        println!("Syncing {} to google", assignment.name);
-                        let actual_assignment = self
-                            .assignments
-                            .iter_mut()
-                            .find(|v| v.name == assignment.name)
-                            .unwrap_or(assignment);
-
-                        if actual_assignment.synced != None {
-                            continue;
-                        }
-                        let dir = std::env::current_exe()
-                            .unwrap()
-                            .parent()
-                            .unwrap()
-                            .parent()
-                            .unwrap()
-                            .parent()
-                            .unwrap()
-                            .join("google_sync");
-                        println!("Dir: {:?}", dir);
-                        let output = Command::new("node")
-                            .arg("google.js")
-                            .arg(serde_json::to_string(assignment).unwrap())
-                            .current_dir(dir)
-                            .output()
-                            .await
-                            .unwrap();
-                        println!("Output: {}", String::from_utf8(output.stdout).unwrap());
-                        println!("Synced {} to google", assignment.name);
+                        self.sync_assignment_to_google(assignment).await;
                     }
+                } else {
+                    self.sync_assignment_to_google(assignment).await;
                 }
             }
         }
@@ -344,7 +440,7 @@ impl Manager {
         None
     }
 
-    pub fn mark_done(&mut self, link_name: String) {
+    fn mark_done(&mut self, link_name: String) {
         if let Some(assignment) = self.get_assignment_from_link_name(link_name) {
             let mut assignment = assignment.clone();
             assignment.mark_done();
@@ -354,6 +450,7 @@ impl Manager {
 
     pub async fn run_jobs(&mut self) {
         let mut assignments: Vec<Assignment> = Vec::new();
+        println!("Running jobs");
         for job in &mut self.jobs {
             if job.sync_due() {
                 println!("Syncing {}", job.name);
@@ -364,20 +461,26 @@ impl Manager {
         }
         let start_len = self.assignments.len();
         let mut changed = self.get_changed_assignments(assignments);
-        for assignment in &changed {
-            self.add_assignment(assignment.clone());
-        }
         for assignment in &mut self.assignments {
             let needs_sync = !assignment.synced.unwrap_or(false);
-            assignment.synced = Some(true);
+            if needs_sync {
+                println!("Needs sync: {}", assignment.name);
+            }
             if needs_sync || assignment.done {
+                assignment.synced = Some(true);
                 changed.push(assignment.clone());
             }
+        }
+        for assignment in &changed {
+            self.add_assignment(assignment.clone());
         }
         if start_len != self.assignments.len() {
             println!("Added {} assignments", self.assignments.len() - start_len);
         }
         self.sync_to_google(changed).await;
         self.save().unwrap();
+        if start_len != self.assignments.len() {
+            println!("Done syncing");
+        }
     }
 }

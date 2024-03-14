@@ -8,7 +8,7 @@ use crate::manager;
 #[derive(serde::Serialize, serde::Deserialize)]
 struct JobPageData {
     page: String,
-    manager: manager::Manager,
+    manager: manager::ManagerData,
     job: manager::Job,
     htmx_request: bool,
 }
@@ -22,7 +22,7 @@ struct NewJob {
 #[delete("/<name>/delete")]
 fn delete_job(name: String) -> rocket::response::Redirect {
     let mut manager = manager::Manager::from_save_file();
-    manager.jobs.retain(|job| job.name != name);
+    manager.data.jobs.retain(|job| job.name != name);
     manager.save().unwrap();
     rocket::response::Redirect::to("/jobs")
 }
@@ -30,10 +30,11 @@ fn delete_job(name: String) -> rocket::response::Redirect {
 #[post("/edit", data = "<job>")]
 fn edit_job(job: Form<NewJob>) -> rocket::response::Redirect {
     let mut manager = manager::Manager::from_save_file();
-    if !manager.jobs.iter().any(|j| j.name == job.name) {
+    if !manager.data.jobs.iter().any(|j| j.name == job.name) {
         return rocket::response::Redirect::to(format!("/{}", job.name));
     }
     let current_job = manager
+        .data
         .jobs
         .iter_mut()
         .find(|j| j.name == job.name)
@@ -48,7 +49,7 @@ fn edit_job(job: Form<NewJob>) -> rocket::response::Redirect {
 #[post("/new", data = "<job>")]
 fn new_job(job: Form<NewJob>) -> rocket::response::Redirect {
     let mut manager = manager::Manager::from_save_file();
-    if manager.jobs.iter().any(|j| j.name == job.name) {
+    if manager.data.jobs.iter().any(|j| j.name == job.name) {
         return rocket::response::Redirect::to(format!("/jobs"));
     }
     let job = manager::Job::new(
@@ -66,6 +67,7 @@ fn new_job(job: Form<NewJob>) -> rocket::response::Redirect {
 fn run_job(name: String) -> &'static str {
     let mut manager = manager::Manager::from_save_file();
     manager
+        .data
         .jobs
         .iter_mut()
         .find(|job| job.name == name)
@@ -81,7 +83,7 @@ fn get_page_job(
     name: String,
     headers: Headers,
 ) -> Result<Template, rocket::response::status::NotFound<String>> {
-    let manager = manager::Manager::from_save_file();
+    let manager = manager::Manager::read_no_save();
     let page_data = JobPageData {
         page: format!("jobs/{}", name).to_string(),
         job: match manager.jobs.iter().find(|job| job.name == id) {
